@@ -45,10 +45,6 @@ def HyB(y,t,tempF):
     return Det
 
 
-"""
-The main function is starting from here          
-"""
-
 #Parameters
 gd = 2.5; gr = 2.8; gsd = 0.21; gsr = 0.28;
 gl = 0.06; gh = 0.4;
@@ -74,8 +70,6 @@ indices=np.random.choice(range(len(GVals)),nnodes,replace=False)
 
 gsd=GVals[indices,0]
 gsr=GVals[indices,1]
-
-
 
 pij=0.4
 
@@ -107,7 +101,7 @@ tempF=[rho,phi]
 # PARAMETERS FOR ADAPTATION SIMULATION
 #initial value
 y0=np.array([v,asd,asr,ah,ar])
-y0=y0.flatten('F')
+y0=y0.flatten('F')  #The N x 5 array is flattened to work with odeint
 adaptTime=15000 #ms
 adaptInt=1  #This controls only for the returned values, not the calculation 
 Tadapt=np.arange(0,adaptTime,adaptInt)
@@ -162,6 +156,9 @@ phaseMaxF=phase[range(nnodes),maxFind,bound1:bound2]
 phasesynch=np.abs(np.mean(np.exp(1j*phaseMaxF),0))
 MPsync=np.mean(phasesynch)
 VarPsync=np.var(phasesynch)
+
+print("Mean phase synchrony (R parameter): %g"%MPsync)
+print("Metastability (standard deviation of R parameter): %g"%VarPsync)
 
 #%%
 PsynchT=np.zeros((nnodes,nnodes,(bound2-bound1)))
