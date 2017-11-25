@@ -67,14 +67,8 @@ nsim=50
 temp=36*np.ones(nsim)
 pij=0.4
 #%%
-# numpy.round is evenly round to the given number of decimals
-Ggjvals=np.logspace(-6,0,num=23)
-Ggjvals=np.insert(Ggjvals,0,0)
-#threads=len(Ggjvals)
 CM = np.zeros((nsim,nsim))
 
-
-#%%
 CM[0,-1]=1
 for i in range(1,nsim):
     c_p = np.random.uniform(size=i)
