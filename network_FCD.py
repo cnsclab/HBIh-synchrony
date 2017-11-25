@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Tue Dec 22 14:56:13 2015
-The Huber_braun neuronal model function
+The Huber_braun neuronal model 
 @author: porio
 """
 

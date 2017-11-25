@@ -7,29 +7,44 @@ Created on Wed Apr 27 15:57:38 2016
 """
 from __future__ import division
 import numpy as np
-#import seaborn as sns ## is used to plot some of the results
-#import pandas as pd ## pandas has a function to make the correlation between multiple time series
 import matplotlib.pylab as plt
-import Wavelets
-
-
-def phaseScramble(data,Nsurr=10):
-    len_d=len(data)
-    fftdata=np.fft.fft(data)
-    angles=np.angle(fftdata)
-    amplitudes=np.abs(fftdata)
-    
-    surrAngles=np.random.uniform(low=-np.pi,high=np.pi,size=(Nsurr,len(angles)))
-    surrAngles[:,1:len_d//2]=surrAngles[:,-1:len_d//2:-1]
-    surrAngles[:,len_d//2]=0
-    
-    fftSurr=amplitudes*(np.cos(surrAngles) + 1j*np.sin(surrAngles))
-    surrData=np.fft.ifft(fftSurr,axis=-1)
-    
-    return surrData
-
 
 def extract_FCD(data,wwidth=1000,maxNwindows=100,olap=0.9,coldata=False,mode='corr'):
+    """
+    Functional Connectivity Dynamics from a collection of time series
+
+    Parameters:
+    -----------
+    data : array-like
+        2-D array of data, with time series in rows (unless coldata is True)
+    wwidth : integer
+        Length of data windows in which the series will be divided, in samples
+    maxNwindows : integer
+        Maximum number of windows to be used. wwidth will be increased if necessary
+    olap : float between 0 and 1
+        Overlap between neighboring data windows, in fraction of window length
+    coldata : Boolean
+        if True, the time series are arranged in columns and rows represent time
+    mode : 'corr' | 'psync' | 'plock' | 'tdcorr'
+        Measure to calculate the Functional Connectivity (FC) between nodes.
+        'corr' : Pearson correlation. Uses the corrcoef function of numpy.
+        'psync' : Pair-wise phase synchrony.
+        'plock' : Pair-wise phase locking.
+        'tdcorr' : Time-delayed correlation, looks for the maximum value in a cross-correlation of the data series 
+        
+    Returns:
+    --------
+    FCDmatrix : numpy array
+        Correlation matrix between all the windowed FCs.
+    CorrVectors : numpy array
+        Collection of FCs, linearized. Only the lower triangle values (excluding the diagonal) are returned
+    shift : integer
+        The distance between windows that was actually used (in samples)
+            
+        
+
+    """
+    
     if olap>=1:
         raise ValueError("olap must be lower than 1")
     if coldata:
@@ -47,7 +62,7 @@ def extract_FCD(data,wwidth=1000,maxNwindows=100,olap=0.9,coldata=False,mode='co
     indx_stop = range(wwidth,(1+lenseries),shift)
          
     nnodes=len(data)
-    #    mat_ones=np.tril(-10*np.ones((n_ts,n_ts))) #this is a condition to then eliminate the diagonal
+
     for j1,j2 in zip(indx_start,indx_stop):
         aux_s = data[:,j1:j2]
         if mode=='corr':
@@ -57,7 +72,7 @@ def extract_FCD(data,wwidth=1000,maxNwindows=100,olap=0.9,coldata=False,mode='co
             for ii in range(nnodes):
                 for jj in range(ii):
                     corr_mat[ii,jj]=np.mean(np.abs(np.mean(np.exp(1j*aux_s[[ii,jj],:]),0)))
-        elif mode=='pcoher':
+        elif mode=='plock':
             corr_mat=np.zeros((nnodes,nnodes))
             for ii in range(nnodes):
                 for jj in range(ii):
@@ -77,84 +92,50 @@ def extract_FCD(data,wwidth=1000,maxNwindows=100,olap=0.9,coldata=False,mode='co
     
     return np.corrcoef(CV_centered),corr_vectors,shift
 
-
-
-
-#%%
-## As an example it takes the next time series:
-
 if __name__=='__main__':    
-        
-#    data_series=np.loadtxt("Vfilt-FR30to45noIh-50nodes-seed619-g0.316228.txt.gz")
-    data_series=np.loadtxt("Vfilt-FR30to45chaos2C-50nodes-seed213-g0.01.txt.gz")
 
-#    data_series=data_series[::10,:]
-    dt=0.004
-    runTime=27
-    nnodes=50
+    #Let's create some data with sine waves
+    dt=0.002
+    runTime=20
+    nnodes=20
     Trun=np.arange(0,runTime,dt)
     
-    freqs=np.arange(2,15,0.2)  #Desired frequencies
-    Periods=1/(freqs*dt)    #Desired periods in sample untis
-    dScales=Periods/Wavelets.Morlet.fourierwl  #desired Scales
+    frequencies=np.random.uniform(3,10,size=nnodes)
+    phase=np.random.uniform(-np.pi,np.pi,size=nnodes)
     
-    #wavel=Wavelets.Morlet(EEG,largestscale=10,notes=20,scaling='log')
-    wavelT=[Wavelets.Morlet(y1,scales=dScales) for y1 in data_series.T]
-    cwt=np.array([wavel.getdata() for wavel in wavelT])
-    pwr=np.array([wavel.getnormpower() for wavel in wavelT])
+    timeseries=np.sin(2*np.pi*frequencies[:,None]*(Trun-phase[:,None]))
     
-    phase=np.array([np.angle(cwt_i) for cwt_i in cwt])
-    
-    spec=np.sum(pwr,-1)
-    maxFind=np.argmax(spec,-1)
-    maxFreq=freqs[maxFind]
-    
-    bound1=int(1/dt)
-    bound2=int((runTime-1)/dt)
-    phaseMaxF=phase[range(nnodes),maxFind,bound1:bound2]
-    phasesynch=np.abs(np.mean(np.exp(1j*phaseMaxF),0))
-
+    phasesynch=np.abs(np.mean(np.exp(1j*timeseries),0))
     Pcoher=np.zeros((nnodes,nnodes))
     
     for ii in range(nnodes):
         for jj in range(ii):
-            Pcoher[ii,jj]=np.abs(np.mean(np.exp(1j*np.diff(phaseMaxF[[ii,jj],:],axis=0))))
+            Pcoher[ii,jj]=np.abs(np.mean(np.exp(1j*np.diff(timeseries[[ii,jj],:],axis=0))))
 
-    #sns.clustermap(corr_data_series) #to see how it cluster the time series, seaborn has the function clustermap
-    ##############################################################################
-    #%%
-
-    PcorrFCD,Pcorr,shift=extract_FCD(phaseMaxF[:,::],wwidth=500,olap=.9,mode='psync')
+    PcorrFCD,Pcorr,shift=extract_FCD(timeseries,wwidth=500,olap=.9,mode='psync')
     Tini=1
-    Tfin=Trun[-1]/1000 - 1
+    Tfin=Trun[-1]
     plt.figure(4,figsize=(10,12))
     plt.clf()
     
-    plt.subplot2grid((5,5),(0,0),rowspan=2,colspan=5)
-    plt.plot(Trun[bound1:bound2],phasesynch)
+    plt.subplot2grid((5,4),(0,0),rowspan=2,colspan=4)
+    plt.plot(Trun,phasesynch)
     plt.title('mean P sync')
     
-    plt.subplot2grid((5,5),(2,0),rowspan=2,colspan=2)
+    plt.subplot2grid((5,4),(2,0),rowspan=2,colspan=2)
     plt.imshow(PcorrFCD,vmin=0,vmax=1,extent=(Tini,Tfin,Tfin,Tini),interpolation='none',cmap='jet')
-    plt.title('P coher FCD')
+    plt.title('Phase synch FCD')
     plt.grid()
-
-#    plt.subplot2grid((5,5),(3,4))
-#    plt.imshow(Psynch+Psynch.T+np.eye(nnodes),cmap='jet',vmax=1,vmin=0,interpolation='none')
-#    plt.gca().set_xticklabels((),())
-#    plt.gca().set_yticklabels((),())
-#    plt.title('P sync')
-#    plt.grid()
     
-    plt.subplot2grid((5,5),(3,4))
+    plt.subplot2grid((5,4),(2,2),rowspan=2,colspan=2)
     plt.imshow(Pcoher+Pcoher.T+np.eye(nnodes),cmap='jet',vmax=1,vmin=0,interpolation='none')
     plt.gca().set_xticklabels((),())
     plt.gca().set_yticklabels((),())
-    plt.title('P coher')
+    plt.title('Phase locking')
     plt.grid()
     
-    axes2=[plt.subplot2grid((5,5),pos) for pos in ((4,0),(4,1),(4,2),(4,3),(4,4))]
-    for axi,ind in zip(axes2,(20,35,50,75,90)):
+    axes2=[plt.subplot2grid((5,4),pos) for pos in ((4,0),(4,1),(4,2),(4,3))]
+    for axi,ind in zip(axes2,(25,50,75,90)):
         corrMat=np.zeros((nnodes,nnodes))
         corrMat[np.tril_indices(nnodes,k=-1)]=Pcorr[ind]
         corrMat+=corrMat.T
@@ -167,8 +148,5 @@ if __name__=='__main__':
         
         axi.set_title('t=%.2g'%(ind*Tfin/len(Pcorr)))
         axi.grid()
-
-
-    #correlations,corrV,delta = extract_FCD(np.unwrap(data_series,axis=0),coldata=True,maxNwindows=100,wwidth=1000,mode='corr')
-    #correlations,corrV = extract_FCD(data_series,coldata=True,maxNwindows=150,wwidth=200,mode='corr')
+        
     
