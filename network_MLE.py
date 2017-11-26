@@ -5,13 +5,10 @@ Created on Wed May 28 16:31:57 2014
 @author: kesheng Xu
 """
 from __future__ import division
-import matplotlib
-matplotlib.use('Agg')
 import numpy as np
 import time as TM
 import sys
-import mlenetwork as mle
-import os
+import mle
 
 if len(sys.argv)>1:
     rseed=int(sys.argv[1])
@@ -19,14 +16,12 @@ else:
     rseed=0
 np.random.seed(rseed)
 
-
-
 #%%
 # Networks of HB+Ih model
-def HyB(Var,t,tempF,sqdt,parameter):
+def HyB(Var,t,tempF):
     [rho,phi]=tempF
     [v,ar,asd,asr,ah]=Var 
-    [gsd,gh]=parameter
+    
     ad = 1/(1+np.exp(-zd*(v-V0d)))
     isd = rho*gsd*asd*(v - Ed)
     Imemb=isd + rho*gd*ad*(v - Ed) + rho*(gr*ar + gsr*(asr**2)/(asr**2+0.4**2))*(v-Er) \
@@ -42,15 +37,8 @@ def HyB(Var,t,tempF,sqdt,parameter):
                 phi*(asdinf - asd)/tsd,
                 phi*(-eta*isd - kappa*asr)/tsr,
                 phi*(ahinf-ah)/th])
-   
-    Stoch=np.array([sqdt*np.random.normal(size=np.shape(v)),  #different noise, in this case sqdt  equal zero
-#    Stoch=np.array([sqdt*np.random.normal()*np.ones_like(v),    #same noise 
-                    np.zeros_like(v),
-                    np.zeros_like(v),
-                    np.zeros_like(v),
-                    np.zeros_like(v)])
-    
-    return Det+Stoch
+       
+    return Det
 #%%
 #The default parameter values of the model
 gd = 2.5; gr = 2.8; gsd = 0.23; gsr = 0.28;
@@ -95,20 +83,13 @@ Gnames="FR30to45chaos"
 
 #Gnames="FR70to95chaos"
 #Gnames="FR70to95nonc
-folder='Results/'+ Gnames + '/chaos%gnodes-seed%g/'%(nsim,rseed)
-
-directory = os.path.dirname(folder)
-if not os.path.exists(directory):
-    os.makedirs(directory)
 
 GVals = np.loadtxt('Datasets/' + Gnames + ".txt")
-
 
 indices=np.random.choice(range(len(GVals)),nsim,replace=False)
 
 gsd=GVals[indices,0]
 gsr=GVals[indices,1]
-
 
 ar = 1/(1+np.exp(-zr*(v-V0r)));
 asd = 1/(1+np.exp(-zsd*(v-V0sd)));
@@ -120,17 +101,13 @@ asr = -eta*rho*gsd*asd*(v - Ed)/kappa;
 #initial conditions
 X=np.array([v,ar,asd,asr,ah])
 
-print(Ggj,"adaptation ready")
-
-Y0=mle.MLE_Euler(HyB,X=X,N=N,dt=dt,tempF=(rho,phi),parameter=(gsd,gsr)) 
+Y0=mle.MLE_Euler(HyB,X=X,N=N,dt=dt,tempF=(rho,phi)) 
 
 Y=Y0[0]
 MLE=Y0[1]
 
 CPUtime=TM.time()
+
 print(Ggj,MLE,CPUtime)
-#save the data to the file       
-with open(folder+"chmet.txt",'a') as dataf:
-    dataf.write("%g,%g\n"%(Ggj,MLE))
 
 
