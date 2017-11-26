@@ -95,7 +95,7 @@ Gnames="FR30to45chaos"
 
 #Gnames="FR70to95chaos"
 #Gnames="FR70to95nonc
-folder='Results'+ Gnames + '/chaos%gnodes-seed%g/'%(nsim,rseed)
+folder='Results/'+ Gnames + '/chaos%gnodes-seed%g/'%(nsim,rseed)
 
 directory = os.path.dirname(folder)
 if not os.path.exists(directory):
